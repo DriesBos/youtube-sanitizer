@@ -1,0 +1,17 @@
+{
+	"name": "YouTube Sanitizer",
+	"short_name": "YT Feed",
+	"description": "A lightweight chronological YouTube subscription feed.",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#000000",
+	"theme_color": "#000000",
+	"icons": [
+		{
+			"src": "/icon-btn.svg",
+			"sizes": "32x32",
+			"type": "image/svg+xml",
+			"purpose": "any"
+		}
+	]
+}

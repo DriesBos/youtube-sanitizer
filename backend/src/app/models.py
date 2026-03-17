@@ -29,3 +29,26 @@ class WatchStateResponse(BaseModel):
     model_config = {
         "populate_by_name": True,
     }
+
+
+class AuthStatusResponse(BaseModel):
+    configured: bool
+    connected: bool
+    last_sync_at: Optional[str] = Field(default=None, alias="lastSyncAt")
+    subscription_count: int = Field(default=0, alias="subscriptionCount")
+    video_count: int = Field(default=0, alias="videoCount")
+
+    model_config = {
+        "populate_by_name": True,
+    }
+
+
+class SyncResponse(BaseModel):
+    connected: bool
+    subscription_count: int = Field(alias="subscriptionCount")
+    video_count: int = Field(alias="videoCount")
+    synced_at: Optional[str] = Field(default=None, alias="syncedAt")
+
+    model_config = {
+        "populate_by_name": True,
+    }

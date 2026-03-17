@@ -10,3 +10,11 @@ export type FeedItem = {
 	thumbnailUrl?: string;
 	isWatched?: boolean;
 };
+
+export type AuthStatus = {
+	configured: boolean;
+	connected: boolean;
+	lastSyncAt?: string | null;
+	subscriptionCount: number;
+	videoCount: number;
+};

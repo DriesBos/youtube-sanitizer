@@ -1,8 +1,8 @@
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
-import type { FeedItem } from '$lib/types';
+import type { AuthStatus, FeedItem } from '$lib/types';
 
-const productionFallbackApiBase = 'http://18.198.187.97';
+const productionFallbackApiBase = 'https://api.komorebi-reader.com';
 
 const seedFeed: FeedItem[] = [
 	{
@@ -31,26 +31,16 @@ const seedFeed: FeedItem[] = [
 		duration: '12:09',
 		description: 'Chronological ordering is applied server-side before the page renders.',
 		isWatched: false
-	},
-	{
-		videoId: 'Zi_XLOBDo_Y',
-		title: 'The case for server-owned feeds and cached merges',
-		channelName: 'Systems Weekly',
-		publishedAt: '2026-03-16T16:25:00Z',
-		duration: '31:12',
-		description: 'The UI accepts optional watched status from the backend when it exists.',
-		isWatched: false
-	},
-	{
-		videoId: 'fJ9rUzIMcZQ',
-		title: 'What actually matters for a single-user media app',
-		channelName: 'One Box Ops',
-		publishedAt: '2026-03-15T22:15:00Z',
-		duration: '9:58',
-		description: 'Local watched-state can bridge the gap until a richer backend exists.',
-		isWatched: true
 	}
 ];
+
+const disconnectedStatus: AuthStatus = {
+	configured: false,
+	connected: false,
+	lastSyncAt: null,
+	subscriptionCount: 0,
+	videoCount: 0
+};
 
 type FeedApiResponse =
 	| FeedItem[]
@@ -58,6 +48,10 @@ type FeedApiResponse =
 			items?: FeedItem[];
 			feed?: FeedItem[];
 	  };
+
+export function getBackendApiBase(): string | undefined {
+	return env.YOUTUBE_FEED_API_URL ?? (dev ? undefined : productionFallbackApiBase);
+}
 
 function sortChronologically(items: FeedItem[]): FeedItem[] {
 	return [...items].sort((left, right) => {
@@ -75,7 +69,7 @@ function normaliseFeed(items: FeedItem[]): FeedItem[] {
 }
 
 export async function getFeed(fetchFn: typeof fetch): Promise<FeedItem[]> {
-	const apiBase = env.YOUTUBE_FEED_API_URL ?? (dev ? undefined : productionFallbackApiBase);
+	const apiBase = getBackendApiBase();
 
 	if (!apiBase) {
 		return normaliseFeed(seedFeed);
@@ -83,7 +77,6 @@ export async function getFeed(fetchFn: typeof fetch): Promise<FeedItem[]> {
 
 	try {
 		const response = await fetchFn(new URL('/api/feed?limit=60', apiBase));
-
 		if (!response.ok) {
 			throw new Error(`Feed request failed with ${response.status}`);
 		}
@@ -91,13 +84,29 @@ export async function getFeed(fetchFn: typeof fetch): Promise<FeedItem[]> {
 		const payload = (await response.json()) as FeedApiResponse;
 		const items = Array.isArray(payload) ? payload : payload.items ?? payload.feed ?? [];
 
-		if (items.length === 0) {
-			return normaliseFeed(seedFeed);
-		}
-
-		return normaliseFeed(items);
+		return items.length > 0 ? normaliseFeed(items) : normaliseFeed(seedFeed);
 	} catch (error) {
 		console.error('Falling back to seeded feed data.', error);
 		return normaliseFeed(seedFeed);
+	}
+}
+
+export async function getAuthStatus(fetchFn: typeof fetch): Promise<AuthStatus> {
+	const apiBase = getBackendApiBase();
+
+	if (!apiBase) {
+		return disconnectedStatus;
+	}
+
+	try {
+		const response = await fetchFn(new URL('/api/auth/status', apiBase));
+		if (!response.ok) {
+			throw new Error(`Auth status request failed with ${response.status}`);
+		}
+
+		return (await response.json()) as AuthStatus;
+	} catch (error) {
+		console.error('Falling back to disconnected auth status.', error);
+		return disconnectedStatus;
 	}
 }

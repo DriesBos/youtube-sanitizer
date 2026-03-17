@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
-	import type { FeedDensity, FeedItem } from '$lib/types';
+	import type { AuthStatus, FeedDensity, FeedItem } from '$lib/types';
 
-	let { data } = $props<{ data: { feed: FeedItem[] } }>();
+	let { data } = $props<{
+		data: {
+			apiBase?: string;
+			authStatus: AuthStatus;
+			feed: FeedItem[];
+		};
+	}>();
 
 	const densityCycle: FeedDensity[] = ['full', 'compact', 'text'];
 	const densityLabels: Record<FeedDensity, string> = {
@@ -15,15 +21,21 @@
 	const serverWatchedIds = $derived(
 		feed.filter((item: FeedItem) => item.isWatched).map((item: FeedItem) => item.videoId)
 	);
+	const authStatus = $derived(data.authStatus);
+	const connectUrl = $derived(data.apiBase ? `${data.apiBase}/api/auth/google/start` : '');
 
 	let density = $state<FeedDensity>('full');
 	let watchedIds = $state<string[]>([]);
+	let syncing = $state(false);
+	let syncError = $state('');
+	let authMessage = $state('');
 
 	const currentDensityLabel = $derived(densityLabels[density]);
 
 	onMount(() => {
 		const storedDensity = window.localStorage.getItem('feed-density');
 		const storedWatched = window.localStorage.getItem('watched-video-ids');
+		const params = new URLSearchParams(window.location.search);
 
 		if (storedDensity === 'full' || storedDensity === 'compact' || storedDensity === 'text') {
 			density = storedDensity;
@@ -32,6 +44,13 @@
 		if (storedWatched) {
 			const parsed = JSON.parse(storedWatched) as string[];
 			watchedIds = [...new Set(parsed)];
+		}
+
+		const auth = params.get('auth');
+		if (auth === 'connected') {
+			authMessage = 'YouTube connected. Run sync if your feed has not refreshed yet.';
+		} else if (auth) {
+			authMessage = `Authentication returned: ${auth}.`;
 		}
 	});
 
@@ -56,6 +75,26 @@
 		}).catch(() => {
 			// Local state is enough to keep the UI responsive if the backend is unavailable.
 		});
+	}
+
+	async function runSync() {
+		syncing = true;
+		syncError = '';
+
+		try {
+			const response = await fetch('/api/sync', { method: 'POST' });
+			if (!response.ok) {
+				const payload = await response.json().catch(() => ({ detail: 'Sync failed.' }));
+				syncError = payload.detail ?? 'Sync failed.';
+				return;
+			}
+
+			window.location.reload();
+		} catch (error) {
+			syncError = 'Sync failed.';
+		} finally {
+			syncing = false;
+		}
 	}
 
 	function isWatched(videoId: string) {
@@ -87,11 +126,44 @@
 			<p class="caption">Chronological, cached, and built for in-feed playback.</p>
 		</div>
 
-		<button class="density-toggle" type="button" onclick={cycleDensity}>
-			<img alt="" aria-hidden="true" src="/icon-btn.svg" />
-			<span class="sr-only">Cycle viewing mode. Current mode: {currentDensityLabel}</span>
-		</button>
+		<div class="controls">
+			{#if authStatus.configured}
+				{#if authStatus.connected}
+					<button class="action-button" type="button" onclick={runSync} disabled={syncing}>
+						{syncing ? 'Syncing...' : 'Sync'}
+					</button>
+				{:else if connectUrl}
+					<a class="action-button link-button" href={connectUrl}>Connect YouTube</a>
+				{/if}
+			{/if}
+
+			<button class="density-toggle" type="button" onclick={cycleDensity}>
+				<img alt="" aria-hidden="true" src="/icon-btn.svg" />
+				<span class="sr-only">Cycle viewing mode. Current mode: {currentDensityLabel}</span>
+			</button>
+		</div>
 	</header>
+
+	{#if !authStatus.configured}
+		<p class="status-banner warning">
+			Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to the backend to enable real YouTube data.
+		</p>
+	{:else if !authStatus.connected}
+		<p class="status-banner">Connect your Google account to replace the demo feed with your subscriptions.</p>
+	{:else}
+		<p class="status-banner">
+			Connected. {authStatus.subscriptionCount} subscriptions cached, {authStatus.videoCount} videos in the
+			current feed snapshot.
+		</p>
+	{/if}
+
+	{#if authMessage}
+		<p class="status-banner">{authMessage}</p>
+	{/if}
+
+	{#if syncError}
+		<p class="status-banner warning">{syncError}</p>
+	{/if}
 
 	<section class="feed" data-density={density} aria-label="Subscription feed">
 		{#each feed as item (item.videoId)}
@@ -162,6 +234,12 @@
 		color: rgba(255, 255, 255, 0.58);
 	}
 
+	.controls {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
 	.density-toggle {
 		display: inline-flex;
 		align-items: center;
@@ -174,10 +252,46 @@
 		cursor: pointer;
 	}
 
+	.action-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 32px;
+		padding: 0 12px;
+		border: 1px solid rgba(255, 255, 255, 0.24);
+		background: transparent;
+		color: #fff;
+		font: inherit;
+		text-decoration: none;
+		cursor: pointer;
+	}
+
+	.action-button:disabled {
+		opacity: 0.55;
+		cursor: progress;
+	}
+
+	.link-button {
+		white-space: nowrap;
+	}
+
 	.density-toggle img {
 		display: block;
 		width: 32px;
 		height: 32px;
+	}
+
+	.status-banner {
+		margin: 0 0 18px;
+		padding: 10px 12px;
+		border: 1px solid rgba(255, 255, 255, 0.14);
+		color: rgba(255, 255, 255, 0.82);
+		font-size: 0.92rem;
+	}
+
+	.status-banner.warning {
+		border-color: rgba(255, 196, 0, 0.42);
+		color: #ffd665;
 	}
 
 	.sr-only {
@@ -302,6 +416,7 @@
 
 		.topbar {
 			align-items: start;
+			flex-direction: column;
 		}
 
 		.feed[data-density='compact'] .feed-item {
