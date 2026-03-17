@@ -24,16 +24,24 @@ class Settings:
     app_port: int
     app_base_url: str
     frontend_base_url: str
+    frontend_base_urls: tuple[str, ...]
     database_path: Path
 
 
 def load_settings() -> Settings:
+    frontend_base_url = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
+    frontend_base_urls_raw = os.getenv("FRONTEND_BASE_URLS", frontend_base_url)
+    frontend_base_urls = tuple(
+        value.strip() for value in frontend_base_urls_raw.split(",") if value.strip()
+    )
+
     return Settings(
         app_env=os.getenv("APP_ENV", "development"),
         app_host=os.getenv("APP_HOST", "127.0.0.1"),
         app_port=int(os.getenv("APP_PORT", "8000")),
         app_base_url=os.getenv("APP_BASE_URL", "http://127.0.0.1:8000"),
-        frontend_base_url=os.getenv("FRONTEND_BASE_URL", "http://localhost:5173"),
+        frontend_base_url=frontend_base_url,
+        frontend_base_urls=frontend_base_urls or (frontend_base_url,),
         database_path=_resolve_database_path(
             os.getenv("DATABASE_PATH", "./data/youtube_sanitizer.db")
         ),
