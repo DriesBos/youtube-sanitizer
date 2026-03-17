@@ -140,6 +140,18 @@ def _fetch_channels(client: httpx.Client, channel_ids: list[str]) -> dict[str, d
     return result
 
 
+def _is_playlist_not_found(response: httpx.Response) -> bool:
+    if response.status_code != 404:
+        return False
+
+    try:
+        errors = response.json().get("error", {}).get("errors", [])
+    except ValueError:
+        return False
+
+    return any(error.get("reason") == "playlistNotFound" for error in errors)
+
+
 def _fetch_playlist_video_ids(
     client: httpx.Client, playlist_id: str, max_results: int
 ) -> list[str]:
@@ -152,6 +164,8 @@ def _fetch_playlist_video_ids(
         },
     )
     if response.status_code >= 400:
+        if _is_playlist_not_found(response):
+            return []
         raise YouTubeSyncError(response.text)
 
     items = response.json().get("items", [])
