@@ -18,7 +18,6 @@
 
 	let density = $state<FeedDensity>('full');
 	let watchedIds = $state<string[]>([]);
-	let activeVideoId = $state<string | null>(null);
 
 	const currentDensityLabel = $derived(densityLabels[density]);
 
@@ -41,12 +40,7 @@
 		const nextDensity = densityCycle[(currentIndex + 1) % densityCycle.length];
 
 		density = nextDensity;
-		activeVideoId = null;
 		window.localStorage.setItem('feed-density', nextDensity);
-	}
-
-	function toggleVideo(videoId: string) {
-		activeVideoId = activeVideoId === videoId ? null : videoId;
 	}
 
 	function markWatched(videoId: string) {
@@ -69,10 +63,6 @@
 		const year = value.getUTCFullYear();
 
 		return `${day}.${month}.${year}`;
-	}
-
-	function getThumbnailUrl(item: FeedItem) {
-		return item.thumbnailUrl ?? `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`;
 	}
 </script>
 
@@ -99,36 +89,16 @@
 
 	<section class="feed" data-density={density} aria-label="Subscription feed">
 		{#each feed as item (item.videoId)}
-			<article
-				class="feed-item"
-				class:playing={activeVideoId === item.videoId}
-				class:watched={isWatched(item.videoId)}
-			>
+			<article class="feed-item" class:watched={isWatched(item.videoId)}>
 				{#if density !== 'text'}
 					<div class="media-shell">
-						{#if activeVideoId === item.videoId}
-							<div class="player-frame">
-								<YouTubePlayer
-									videoId={item.videoId}
-									title={item.title}
-									onWatched={markWatched}
-								/>
-							</div>
-						{:else}
-							<button
-								class="thumbnail-button"
-								type="button"
-								aria-label={`Play ${item.title}`}
-								onclick={() => toggleVideo(item.videoId)}
-							>
-								<img
-									alt=""
-									class="thumbnail"
-									loading="lazy"
-									src={getThumbnailUrl(item)}
-								/>
-							</button>
-						{/if}
+						<div class="player-frame">
+							<YouTubePlayer
+								videoId={item.videoId}
+								title={item.title}
+								onWatched={markWatched}
+							/>
+						</div>
 					</div>
 				{/if}
 
@@ -235,21 +205,10 @@
 		background: #111;
 	}
 
-	.thumbnail-button {
-		display: block;
-		width: 100%;
-		padding: 0;
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-	}
-
-	.thumbnail,
 	.player-frame {
 		display: block;
 		width: 100%;
 		aspect-ratio: 16 / 9;
-		object-fit: cover;
 		background: #111;
 	}
 
@@ -298,7 +257,6 @@
 		order: 2;
 	}
 
-	.feed[data-density='compact'] .thumbnail,
 	.feed[data-density='compact'] .player-frame {
 		aspect-ratio: 1.84 / 1;
 	}

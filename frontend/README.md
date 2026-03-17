@@ -1,42 +1,43 @@
-# sv
+# Frontend
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit frontend for the YouTube subscription feed.
 
-## Creating a project
+## Local run
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+From the repo root:
 
 ```sh
-# recreate this project
-npx sv@0.12.7 create --template minimal --types ts --no-install frontend
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
+cd frontend
+cp .env.example .env
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+The frontend will start on `http://localhost:5173`.
 
-To create a production version of your app:
+If you have a backend running locally, point `YOUTUBE_FEED_API_URL` at it in `frontend/.env`.
+If you do not, the app falls back to seeded demo feed data.
+
+## Build
 
 ```sh
+cd frontend
+npm run check
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+## Netlify
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+The repo root includes a `netlify.toml` that sets:
+
+- base directory: `frontend`
+- build command: `npm run build`
+- Node version: `22.22.0`
+
+For frontend env vars in Netlify, add:
+
+```txt
+YOUTUBE_FEED_API_URL=https://your-backend-domain
+```
+
+This variable is read server-side by SvelteKit when building/rendering the frontend.
