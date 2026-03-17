@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List
 
-from .db import connect, iter_feed_rows
+from .db import connect, iter_feed_rows, set_watched_state
 from .models import FeedItem
 
 
@@ -24,3 +24,8 @@ def list_feed_items(database_path: Path, limit: int) -> List[FeedItem]:
         )
         for row in rows
     ]
+
+
+def mark_video_watched(database_path: Path, video_id: str) -> bool:
+    with connect(database_path) as connection:
+        return set_watched_state(connection, video_id, True)

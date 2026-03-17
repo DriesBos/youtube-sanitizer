@@ -20,3 +20,12 @@ class FeedItem(BaseModel):
 
 class FeedResponse(BaseModel):
     items: List[FeedItem]
+
+
+class WatchStateResponse(BaseModel):
+    video_id: str = Field(alias="videoId")
+    is_watched: bool = Field(alias="isWatched")
+
+    model_config = {
+        "populate_by_name": True,
+    }

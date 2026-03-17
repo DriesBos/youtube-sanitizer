@@ -50,6 +50,12 @@
 
 		watchedIds = [...watchedIds, videoId];
 		window.localStorage.setItem('watched-video-ids', JSON.stringify(watchedIds));
+
+		void fetch(`/api/feed/${videoId}/watched`, {
+			method: 'POST'
+		}).catch(() => {
+			// Local state is enough to keep the UI responsive if the backend is unavailable.
+		});
 	}
 
 	function isWatched(videoId: string) {

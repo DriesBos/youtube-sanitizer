@@ -134,3 +134,18 @@ def iter_feed_rows(
     LIMIT ?
     """
     return connection.execute(query, (limit,))
+
+
+def set_watched_state(
+    connection: sqlite3.Connection, video_id: str, is_watched: bool
+) -> bool:
+    cursor = connection.execute(
+        """
+        UPDATE feed_items
+        SET is_watched = ?
+        WHERE video_id = ?
+        """,
+        (int(is_watched), video_id),
+    )
+    connection.commit()
+    return cursor.rowcount > 0
