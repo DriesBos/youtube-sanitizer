@@ -1,5 +1,8 @@
+import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import type { FeedItem } from '$lib/types';
+
+const productionFallbackApiBase = 'http://18.198.187.97';
 
 const seedFeed: FeedItem[] = [
 	{
@@ -72,7 +75,7 @@ function normaliseFeed(items: FeedItem[]): FeedItem[] {
 }
 
 export async function getFeed(fetchFn: typeof fetch): Promise<FeedItem[]> {
-	const apiBase = env.YOUTUBE_FEED_API_URL;
+	const apiBase = env.YOUTUBE_FEED_API_URL ?? (dev ? undefined : productionFallbackApiBase);
 
 	if (!apiBase) {
 		return normaliseFeed(seedFeed);
