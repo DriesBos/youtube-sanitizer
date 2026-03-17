@@ -11,11 +11,6 @@
 		compact: 'Compact',
 		text: 'Text only'
 	};
-	const dateFormatter = new Intl.DateTimeFormat('en', {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric'
-	});
 	const feed = $derived(data.feed);
 	const serverWatchedIds = $derived(
 		feed.filter((item: FeedItem) => item.isWatched).map((item: FeedItem) => item.videoId)
@@ -23,6 +18,7 @@
 
 	let density = $state<FeedDensity>('full');
 	let watchedIds = $state<string[]>([]);
+	let activeVideoId = $state<string | null>(null);
 
 	const currentDensityLabel = $derived(densityLabels[density]);
 
@@ -45,7 +41,12 @@
 		const nextDensity = densityCycle[(currentIndex + 1) % densityCycle.length];
 
 		density = nextDensity;
+		activeVideoId = null;
 		window.localStorage.setItem('feed-density', nextDensity);
+	}
+
+	function toggleVideo(videoId: string) {
+		activeVideoId = activeVideoId === videoId ? null : videoId;
 	}
 
 	function markWatched(videoId: string) {
@@ -62,7 +63,16 @@
 	}
 
 	function formatDate(date: string) {
-		return dateFormatter.format(new Date(date));
+		const value = new Date(date);
+		const day = `${value.getUTCDate()}`.padStart(2, '0');
+		const month = `${value.getUTCMonth() + 1}`.padStart(2, '0');
+		const year = value.getUTCFullYear();
+
+		return `${day}.${month}.${year}`;
+	}
+
+	function getThumbnailUrl(item: FeedItem) {
+		return item.thumbnailUrl ?? `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`;
 	}
 </script>
 
@@ -75,53 +85,60 @@
 </svelte:head>
 
 <div class="shell">
-	<header class="hero">
-		<div class="hero-copy">
-			<p class="eyebrow">YouTube subscriptions</p>
-			<h1>Your newest uploads, in chronological order.</h1>
-			<p class="lede">
-				The frontend is ready for a backend-provided merged feed. Until that exists, this page renders
-				a seeded server-side feed with the same shape.
-			</p>
+	<header class="topbar">
+		<div>
+			<p class="overline">YouTube subscription feed</p>
+			<p class="caption">Chronological, cached, and built for in-feed playback.</p>
 		</div>
 
-		<div class="hero-actions">
-			<button class="density-toggle" type="button" onclick={cycleDensity}>
-				View: {currentDensityLabel}
-			</button>
-			<p class="helper">Cycle between Full, Compact, and Text only.</p>
-		</div>
+		<button class="density-toggle" type="button" onclick={cycleDensity}>
+			<img alt="" aria-hidden="true" src="/icon-btn.svg" />
+			<span class="sr-only">Cycle viewing mode. Current mode: {currentDensityLabel}</span>
+		</button>
 	</header>
 
-	<section class="feed" data-density={density}>
+	<section class="feed" data-density={density} aria-label="Subscription feed">
 		{#each feed as item (item.videoId)}
-			<article class:watched={isWatched(item.videoId)} class="feed-item">
-				<div class="meta">
-					<div class="meta-main">
-						<p class="channel">{item.channelName}</p>
-						<h2>{item.title}</h2>
-					</div>
-					<div class="meta-side">
-						<time datetime={item.publishedAt}>{formatDate(item.publishedAt)}</time>
-						{#if item.duration}
-							<span>{item.duration}</span>
+			<article
+				class="feed-item"
+				class:playing={activeVideoId === item.videoId}
+				class:watched={isWatched(item.videoId)}
+			>
+				{#if density !== 'text'}
+					<div class="media-shell">
+						{#if activeVideoId === item.videoId}
+							<div class="player-frame">
+								<YouTubePlayer
+									videoId={item.videoId}
+									title={item.title}
+									onWatched={markWatched}
+								/>
+							</div>
+						{:else}
+							<button
+								class="thumbnail-button"
+								type="button"
+								aria-label={`Play ${item.title}`}
+								onclick={() => toggleVideo(item.videoId)}
+							>
+								<img
+									alt=""
+									class="thumbnail"
+									loading="lazy"
+									src={getThumbnailUrl(item)}
+								/>
+							</button>
 						{/if}
 					</div>
-				</div>
+				{/if}
 
-				{#if density !== 'text'}
-					<div class="player-frame">
-						<YouTubePlayer
-							videoId={item.videoId}
-							title={item.title}
-							onWatched={markWatched}
-						/>
+				<div class="copy">
+					<h2>{item.title}</h2>
+					<div class="meta-line">
+						<time datetime={item.publishedAt}>{formatDate(item.publishedAt)}</time>
+						<span class="channel">{item.channelName}</span>
 					</div>
-				{/if}
-
-				{#if item.description}
-					<p class="description">{item.description}</p>
-				{/if}
+				</div>
 			</article>
 		{/each}
 	</section>
@@ -130,211 +147,214 @@
 <style>
 	:global(body) {
 		margin: 0;
-		background:
-			radial-gradient(circle at top left, rgba(255, 170, 112, 0.24), transparent 32%),
-			radial-gradient(circle at top right, rgba(124, 147, 255, 0.18), transparent 24%),
-			linear-gradient(180deg, #f7efe6 0%, #efe2d1 48%, #e9dcc8 100%);
-		color: #171313;
+		background: #000;
+		color: #fff;
 		font-family:
-			'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman',
-			serif;
+			'Neue Haas Grotesk Text Pro', 'Avenir Next', 'Helvetica Neue', Helvetica, Arial,
+			sans-serif;
 	}
 
 	.shell {
 		max-width: 1120px;
 		margin: 0 auto;
-		padding: 56px 20px 80px;
+		padding: 20px 18px 64px;
 	}
 
-	.hero {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		gap: 24px;
-		align-items: end;
-		margin-bottom: 32px;
+	.topbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		margin-bottom: 28px;
 	}
 
-	.eyebrow {
-		margin: 0 0 10px;
-		font-size: 0.78rem;
-		letter-spacing: 0.18em;
-		text-transform: uppercase;
-		color: #7e4d2d;
-	}
-
-	h1 {
+	.overline,
+	.caption {
 		margin: 0;
-		font-size: clamp(2.5rem, 7vw, 5.4rem);
-		line-height: 0.94;
-		max-width: 10ch;
 	}
 
-	.lede {
-		margin: 18px 0 0;
-		max-width: 54ch;
-		font-size: 1.05rem;
-		line-height: 1.6;
-		color: rgba(23, 19, 19, 0.74);
+	.overline {
+		font-size: 0.74rem;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: rgba(255, 255, 255, 0.76);
 	}
 
-	.hero-actions {
-		display: grid;
-		justify-items: end;
-		gap: 10px;
+	.caption {
+		margin-top: 4px;
+		font-size: 0.92rem;
+		color: rgba(255, 255, 255, 0.58);
 	}
 
 	.density-toggle {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		padding: 0;
 		border: 0;
-		border-radius: 999px;
-		padding: 14px 18px;
-		background: #171313;
-		color: #f7efe6;
-		font: inherit;
+		background: transparent;
 		cursor: pointer;
-		box-shadow: 0 14px 32px rgba(23, 19, 19, 0.16);
 	}
 
-	.helper {
-		margin: 0;
-		font-size: 0.9rem;
-		color: rgba(23, 19, 19, 0.62);
+	.density-toggle img {
+		display: block;
+		width: 32px;
+		height: 32px;
+	}
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	.feed {
 		display: grid;
-		gap: 18px;
+		gap: 24px;
 	}
 
 	.feed-item {
-		padding: 18px;
-		border: 1px solid rgba(23, 19, 19, 0.1);
-		border-radius: 28px;
-		background: rgba(255, 252, 247, 0.72);
-		backdrop-filter: blur(16px);
-		box-shadow: 0 16px 36px rgba(78, 51, 31, 0.08);
-		transition:
-			opacity 180ms ease,
-			transform 180ms ease,
-			box-shadow 180ms ease;
-	}
-
-	.feed-item:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 20px 44px rgba(78, 51, 31, 0.12);
+		display: grid;
+		gap: 10px;
+		transition: opacity 180ms ease;
 	}
 
 	.feed-item.watched {
 		opacity: 0.33;
 	}
 
-	.meta {
-		display: flex;
-		justify-content: space-between;
-		gap: 18px;
-		margin-bottom: 16px;
+	.media-shell {
+		background: #111;
 	}
 
-	.meta-main h2 {
-		margin: 6px 0 0;
-		font-size: clamp(1.25rem, 2vw, 1.65rem);
-		line-height: 1.18;
+	.thumbnail-button {
+		display: block;
+		width: 100%;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	.thumbnail,
+	.player-frame {
+		display: block;
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		object-fit: cover;
+		background: #111;
+	}
+
+	.copy {
+		max-width: 760px;
+	}
+
+	h2 {
+		margin: 0;
+		font-size: clamp(2rem, 4vw, 2.75rem);
+		line-height: 0.98;
+		letter-spacing: -0.045em;
+		font-weight: 700;
+	}
+
+	.meta-line {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px;
+		margin-top: 6px;
+		font-size: 0.92rem;
+		color: rgba(255, 255, 255, 0.96);
 	}
 
 	.channel {
-		margin: 0;
-		font-size: 0.9rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: #7f5a40;
+		text-decoration: underline;
+		text-underline-offset: 0.14em;
 	}
 
-	.meta-side {
-		display: grid;
-		gap: 4px;
-		text-align: right;
-		white-space: nowrap;
-		font-size: 0.92rem;
-		color: rgba(23, 19, 19, 0.62);
-	}
-
-	.player-frame {
-		aspect-ratio: 16 / 9;
-		overflow: hidden;
-		border-radius: 22px;
-		background: #0f0f0f;
-	}
-
-	.description {
-		margin: 14px 0 0;
-		max-width: 68ch;
-		line-height: 1.6;
-		color: rgba(23, 19, 19, 0.72);
+	.feed[data-density='compact'] {
+		gap: 16px;
 	}
 
 	.feed[data-density='compact'] .feed-item {
-		display: grid;
-		grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
-		gap: 18px;
+		grid-template-columns: minmax(0, 1fr) 124px;
 		align-items: start;
+		gap: 14px;
 	}
 
-	.feed[data-density='compact'] .meta,
-	.feed[data-density='compact'] .description {
-		grid-column: 1;
+	.feed[data-density='compact'] .copy {
+		order: 1;
+		max-width: none;
 	}
 
+	.feed[data-density='compact'] .media-shell {
+		order: 2;
+	}
+
+	.feed[data-density='compact'] .thumbnail,
 	.feed[data-density='compact'] .player-frame {
-		grid-column: 2;
-		grid-row: 1 / span 2;
+		aspect-ratio: 1.84 / 1;
+	}
+
+	.feed[data-density='compact'] h2 {
+		font-size: clamp(1.4rem, 2.2vw, 1.95rem);
+	}
+
+	.feed[data-density='compact'] .meta-line {
+		font-size: 0.82rem;
+		margin-top: 4px;
+	}
+
+	.feed[data-density='text'] {
+		gap: 18px;
 	}
 
 	.feed[data-density='text'] .feed-item {
-		padding: 18px 22px;
+		gap: 0;
 	}
 
-	.feed[data-density='text'] .meta {
-		margin-bottom: 8px;
+	.feed[data-density='text'] h2 {
+		font-size: clamp(1.4rem, 2.4vw, 1.95rem);
+		max-width: 22ch;
 	}
 
-	@media (max-width: 860px) {
-		.hero {
-			grid-template-columns: 1fr;
+	.feed[data-density='text'] .meta-line {
+		font-size: 0.82rem;
+		margin-top: 4px;
+	}
+
+	@media (max-width: 700px) {
+		.shell {
+			padding-inline: 12px;
+			padding-top: 14px;
+		}
+
+		.topbar {
 			align-items: start;
 		}
 
-		.hero-actions {
-			justify-items: start;
-		}
-
 		.feed[data-density='compact'] .feed-item {
-			grid-template-columns: 1fr;
+			grid-template-columns: minmax(0, 1fr) 96px;
+			gap: 10px;
 		}
 
-		.feed[data-density='compact'] .meta,
-		.feed[data-density='compact'] .description,
-		.feed[data-density='compact'] .player-frame {
-			grid-column: auto;
-			grid-row: auto;
-		}
-	}
-
-	@media (max-width: 640px) {
-		.shell {
-			padding-inline: 14px;
-			padding-top: 40px;
+		h2 {
+			font-size: 1.9rem;
 		}
 
-		.feed-item {
-			padding: 16px;
-			border-radius: 22px;
+		.feed[data-density='compact'] h2 {
+			font-size: 1.35rem;
 		}
 
-		.meta {
-			flex-direction: column;
-		}
-
-		.meta-side {
-			text-align: left;
+		.feed[data-density='text'] h2 {
+			font-size: 1.5rem;
 		}
 	}
 </style>
