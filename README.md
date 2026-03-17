@@ -71,6 +71,14 @@ and set the frontend custom domain to:
 
 - `https://youtubefeed.komorebi-reader.com`
 
+## Current external blockers
+
+- `api.komorebi-reader.com` now resolves to the new Lightsail server.
+- Caddy has already obtained a certificate for `api.komorebi-reader.com`.
+- Public HTTP on port `80` works and redirects correctly.
+- Public HTTPS on port `443` still does not complete, which strongly suggests the Lightsail networking firewall still needs `HTTPS` opened.
+- `youtubefeed.komorebi-reader.com` was still not resolving at the last check, so the Netlify custom-domain side was not externally reachable yet.
+
 ## Netlify settings
 
 Build settings are already in `netlify.toml`.
