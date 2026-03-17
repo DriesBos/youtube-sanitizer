@@ -1,0 +1,15 @@
+[Unit]
+Description=YouTube Sanitizer API
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/srv/youtube-sanitizer/backend
+EnvironmentFile=/srv/youtube-sanitizer/backend/.env
+ExecStart=/srv/youtube-sanitizer/backend/.venv/bin/uvicorn app.main:app --app-dir /srv/youtube-sanitizer/backend/src --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
