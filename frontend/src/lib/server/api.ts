@@ -37,6 +37,7 @@ const seedFeed: FeedItem[] = [
 const disconnectedStatus: AuthStatus = {
 	configured: false,
 	connected: false,
+	redirectUri: null,
 	lastSyncAt: null,
 	subscriptionCount: 0,
 	videoCount: 0

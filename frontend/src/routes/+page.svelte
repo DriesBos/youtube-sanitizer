@@ -23,6 +23,9 @@
 	);
 	const authStatus = $derived(data.authStatus);
 	const connectUrl = $derived(data.apiBase ? `${data.apiBase}/api/auth/google/start` : '');
+	const redirectUri = $derived(
+		authStatus.redirectUri ?? (data.apiBase ? `${data.apiBase}/api/auth/google/callback` : '')
+	);
 
 	let density = $state<FeedDensity>('full');
 	let watchedIds = $state<string[]>([]);
@@ -145,9 +148,13 @@
 	</header>
 
 	{#if !authStatus.configured}
-		<p class="status-banner warning">
-			Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to the backend to enable real YouTube data.
-		</p>
+		<div class="status-banner warning setup-banner">
+			<p>Add Google OAuth credentials on the backend to replace the demo feed with your real subscriptions.</p>
+			{#if redirectUri}
+				<p>Authorized redirect URI: <code>{redirectUri}</code></p>
+			{/if}
+			<p>Scope: <code>https://www.googleapis.com/auth/youtube.readonly</code></p>
+		</div>
 	{:else if !authStatus.connected}
 		<p class="status-banner">Connect your Google account to replace the demo feed with your subscriptions.</p>
 	{:else}
@@ -292,6 +299,22 @@
 	.status-banner.warning {
 		border-color: rgba(255, 196, 0, 0.42);
 		color: #ffd665;
+	}
+
+	.setup-banner :global(p) {
+		margin: 0;
+	}
+
+	.setup-banner :global(p + p) {
+		margin-top: 6px;
+	}
+
+	.setup-banner code {
+		font-family:
+			'SFMono-Regular', 'SF Mono', 'IBM Plex Mono', 'Roboto Mono', Menlo, Consolas,
+			monospace;
+		font-size: 0.88rem;
+		word-break: break-all;
 	}
 
 	.sr-only {

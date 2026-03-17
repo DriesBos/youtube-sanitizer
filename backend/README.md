@@ -37,8 +37,17 @@ Create a Google Cloud OAuth web application and set:
 Then place the credentials in `backend/.env`:
 
 ```txt
+APP_BASE_URL=https://api.komorebi-reader.com
+FRONTEND_BASE_URL=https://youtube-sanitiser.netlify.app
+FRONTEND_BASE_URLS=https://youtube-sanitiser.netlify.app
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
+```
+
+After updating the server env file, restart the service:
+
+```sh
+sudo systemctl restart youtube-sanitizer-api
 ```
 
 ## Deployment shape

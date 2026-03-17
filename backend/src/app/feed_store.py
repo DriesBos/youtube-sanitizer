@@ -31,13 +31,16 @@ def mark_video_watched(database_path: Path, video_id: str) -> bool:
         return set_watched_state(connection, video_id, True)
 
 
-def get_auth_status(database_path: Path, configured: bool) -> AuthStatusResponse:
+def get_auth_status(
+    database_path: Path, configured: bool, redirect_uri: str | None = None
+) -> AuthStatusResponse:
     with connect(database_path) as connection:
         snapshot = get_auth_snapshot(connection)
 
     return AuthStatusResponse(
         configured=configured,
         connected=snapshot.connected,
+        redirectUri=redirect_uri,
         lastSyncAt=snapshot.last_sync_at,
         subscriptionCount=snapshot.subscription_count,
         videoCount=snapshot.video_count,

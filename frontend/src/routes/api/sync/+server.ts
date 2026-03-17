@@ -12,8 +12,10 @@ export const POST: RequestHandler = async ({ fetch }) => {
 	});
 
 	if (!response.ok) {
-		const detail = await response.text();
-		return json({ ok: false, detail }, { status: response.status });
+		const payload = await response
+			.json()
+			.catch(async () => ({ detail: await response.text().catch(() => 'Sync failed.') }));
+		return json({ ok: false, detail: payload.detail ?? 'Sync failed.' }, { status: response.status });
 	}
 
 	return json({ ok: true, payload: await response.json() });

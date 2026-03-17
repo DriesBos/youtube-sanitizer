@@ -14,6 +14,7 @@ export type FeedItem = {
 export type AuthStatus = {
 	configured: boolean;
 	connected: boolean;
+	redirectUri?: string | null;
 	lastSyncAt?: string | null;
 	subscriptionCount: number;
 	videoCount: number;

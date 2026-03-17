@@ -34,6 +34,7 @@ class WatchStateResponse(BaseModel):
 class AuthStatusResponse(BaseModel):
     configured: bool
     connected: bool
+    redirect_uri: Optional[str] = Field(default=None, alias="redirectUri")
     last_sync_at: Optional[str] = Field(default=None, alias="lastSyncAt")
     subscription_count: int = Field(default=0, alias="subscriptionCount")
     video_count: int = Field(default=0, alias="videoCount")

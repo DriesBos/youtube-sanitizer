@@ -56,7 +56,11 @@ async def health() -> dict:
 
 @app.get("/api/auth/status", response_model=AuthStatusResponse)
 async def auth_status() -> AuthStatusResponse:
-    return get_auth_status(settings.database_path, is_google_configured(settings))
+    return get_auth_status(
+        settings.database_path,
+        is_google_configured(settings),
+        settings.google_redirect_uri,
+    )
 
 
 @app.get("/api/auth/google/start")

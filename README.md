@@ -1,22 +1,23 @@
 # YouTube Sanitizer
 
-Small two-part app for a single-user YouTube subscription feed.
+Single-user YouTube subscription feed with:
 
-## Current state
+- `frontend/`: SvelteKit UI on Netlify
+- `backend/`: FastAPI API on Lightsail
+- chronological cached feed data in SQLite
+- in-feed YouTube playback
 
-- Frontend: SvelteKit in `frontend/`
-- Backend: FastAPI in `backend/`
-- Production backend currently live at `http://18.198.187.97`
-- API endpoints currently available:
-  - `GET /api/health`
-  - `GET /api/feed?limit=60`
-  - `POST /api/feed/{videoId}/watched`
+## Live URLs
 
-## Repo structure
+- Frontend: `https://youtube-sanitiser.netlify.app`
+- Backend: `https://api.komorebi-reader.com`
 
-- `frontend/`: Netlify-hosted UI
-- `backend/`: Lightsail-hosted API
-- `netlify.toml`: Netlify build settings
+## Current status
+
+- Frontend and backend are deployed.
+- Watched-state persistence is live.
+- Google OAuth and YouTube sync endpoints are implemented.
+- Real YouTube data is blocked only by missing Google OAuth credentials on the backend.
 
 ## Local development
 
@@ -43,8 +44,8 @@ uvicorn app.main:app --app-dir src --reload
 ## Production server
 
 - Host: `18.198.187.97`
-- Service name: `youtube-sanitizer-api`
 - App location: `/srv/youtube-sanitizer`
+- Service: `youtube-sanitizer-api`
 - Reverse proxy: `caddy`
 
 Useful commands on the server:
@@ -52,47 +53,33 @@ Useful commands on the server:
 ```sh
 sudo systemctl status youtube-sanitizer-api
 sudo systemctl restart youtube-sanitizer-api
-sudo systemctl status caddy
 sudo journalctl -u youtube-sanitizer-api -n 100 --no-pager
+sudo systemctl status caddy
 ```
 
-## Pending DNS / domain work
+## Netlify
 
-Add these DNS records for `komorebi-reader.com`:
-
-- `A` record: `api` -> `18.198.187.97`
-- `CNAME` record: `youtubefeed` -> Netlify target shown in Netlify's custom-domain UI
-
-Once those resolve, switch the backend to:
-
-- `https://api.komorebi-reader.com`
-
-and set the frontend custom domain to:
-
-- `https://youtubefeed.komorebi-reader.com`
-
-## Current external blockers
-
-- `api.komorebi-reader.com` now resolves to the new Lightsail server.
-- Caddy has already obtained a certificate for `api.komorebi-reader.com`.
-- Public HTTP on port `80` works and redirects correctly.
-- Public HTTPS on port `443` still does not complete, which strongly suggests the Lightsail networking firewall still needs `HTTPS` opened.
-- `youtubefeed.komorebi-reader.com` was still not resolving at the last check, so the Netlify custom-domain side was not externally reachable yet.
-
-## Netlify settings
-
-Build settings are already in `netlify.toml`.
-
-Required environment variable:
+`netlify.toml` contains the build settings. Required environment variable:
 
 ```txt
 YOUTUBE_FEED_API_URL=https://api.komorebi-reader.com
 ```
 
-Temporary fallback if DNS is not ready yet:
+## Google OAuth setup
+
+Create a Google Cloud OAuth web application and configure:
+
+- Authorized JavaScript origins:
+  - `https://youtube-sanitiser.netlify.app`
+- Authorized redirect URIs:
+  - `https://api.komorebi-reader.com/api/auth/google/callback`
+
+Then set these in `backend/.env` on the server:
 
 ```txt
-YOUTUBE_FEED_API_URL=http://18.198.187.97
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+APP_BASE_URL=https://api.komorebi-reader.com
+FRONTEND_BASE_URL=https://youtube-sanitiser.netlify.app
+FRONTEND_BASE_URLS=https://youtube-sanitiser.netlify.app
 ```
-
-The fallback works functionally, but the custom domain should replace it as soon as DNS is in place.
